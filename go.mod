@@ -7,3 +7,5 @@ require (
 	github.com/shiena/ansicolor v0.0.0-20151119151921-a422bbe96644 // indirect
 	go.mongodb.org/mongo-driver v1.3.1
 )
+
+// replace github.com/astaxie/beego v1.12.1 => E:\林雷洲\workspace\github.com\beego-1.11.1

@@ -7,16 +7,42 @@ import (
 	"time"
 )
 
+var (
+	operators = map[string]bool{
+		"exact":       true,
+		"iexact":      true,
+		"contains":    true,
+		"icontains":   true,
+		"gt":          true,
+		"gte":         true,
+		"lt":          true,
+		"lte":         true,
+		"eq":          true,
+		"nq":          true,
+		"ne":          true,
+		"startswith":  true,
+		"endswith":    true,
+		"istartswith": true,
+		"iendswith":   true,
+		"in":          true,
+		"between":     true,
+		"isnull":      true,
+	}
+)
+
 type dbBase struct {
 	ins dbBaser
 }
 
 var _ dbBaser = new(dbBase)
 
-func (d *dbBase) Read(q dbQuerier, mi *modelInfo, ind reflect.Value, tz *time.Location, cols []string) (err error) {
+func (d *dbBase) Read(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location, cols []string) (err error) {
 	return
 }
-func (d *dbBase) ReadBatch(q dbQuerier, qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (i int64, err error) {
+func (d *dbBase) Find(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (i int64, err error) {
+	return
+}
+func (d *dbBase) FindOne(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (err error) {
 	return
 }
 

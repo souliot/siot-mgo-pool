@@ -11,14 +11,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// type dbQuerier struct {
-// 	*mongo.Database
-// }
-
 type orm struct {
 	alias *alias
-	db    dbQuerier
 	isTx  bool
+	db    dbQuerier
 }
 
 // 下划线用来判断结构体是否实现了接口，
@@ -34,7 +30,7 @@ var (
 	ErrTxHasBegan    = errors.New("<Ormer.Begin> transaction already begin")
 	ErrTxDone        = errors.New("<Ormer.Commit/Rollback> transaction not begin")
 	ErrMultiRows     = errors.New("<QuerySeter> return multi rows")
-	ErrNoRows        = errors.New("<QuerySeter> no row found")
+	ErrNoRows        = errors.New("<QuerySeter> err no rows")
 	ErrStmtClosed    = errors.New("<QuerySeter> stmt already closed")
 	ErrArgs          = errors.New("<Ormer> args error may be empty")
 	ErrNotImplement  = errors.New("have not implement")
@@ -73,7 +69,51 @@ func (o *orm) getMiInd(md interface{}, needPtr bool) (mi *modelInfo, ind reflect
 // read data to model
 func (o *orm) Read(md interface{}, cols ...string) (err error) {
 	mi, ind := o.getMiInd(md, true)
-	return o.alias.DbBaser.Read(o.db, mi, ind, o.alias.TZ, cols)
+	return o.alias.DbBaser.Read(o.db, mi, ind, md, o.alias.TZ, cols)
+}
+
+// Try to read a row from the database, or insert one if it doesn't exist
+func (o *orm) ReadOrCreate(md interface{}, col1 string, cols ...string) (bool, int64, error) {
+	cols = append([]string{col1}, cols...)
+	mi, ind := o.getMiInd(md, true)
+	err := o.alias.DbBaser.Read(o.db, mi, ind, md, o.alias.TZ, cols)
+	if err == mongo.ErrNoDocuments {
+		// Create
+		err := o.Insert(md)
+		return (err == nil), 0, err
+	}
+
+	id, vid := int64(0), ind.FieldByIndex(mi.fields.pk.fieldIndex)
+	if mi.fields.pk.fieldType&IsPositiveIntegerField > 0 {
+		id = int64(vid.Uint())
+	} else if mi.fields.pk.rel {
+		return o.ReadOrCreate(vid.Interface(), mi.fields.pk.relModelInfo.fields.pk.name)
+	} else {
+		id = vid.Int()
+	}
+
+	return false, id, err
+}
+
+// insert model data to database
+func (o *orm) Insert(md interface{}) (err error) {
+	// mi, ind := o.getMiInd(md, true)
+	// id, err := o.alias.DbBaser.Insert(o.db, mi, ind, o.alias.TZ)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// set auto pk field
+func (o *orm) setPk(mi *modelInfo, ind reflect.Value, id int64) {
+	if mi.fields.pk.auto {
+		if mi.fields.pk.fieldType&IsPositiveIntegerField > 0 {
+			ind.FieldByIndex(mi.fields.pk.fieldIndex).SetUint(uint64(id))
+		} else {
+			ind.FieldByIndex(mi.fields.pk.fieldIndex).SetInt(id)
+		}
+	}
 }
 
 // return a QuerySeter for table operations.
@@ -82,7 +122,7 @@ func (o *orm) Read(md interface{}, cols ...string) (err error) {
 func (o *orm) QueryTable(ptrStructOrTableName interface{}) (qs QuerySeter) {
 	var name string
 	if table, ok := ptrStructOrTableName.(string); ok {
-		name = snakeString(table)
+		name = nameStrategyMap[defaultNameStrategy](table)
 		if mi, ok := modelCache.get(name); ok {
 			qs = newQuerySet(o, mi)
 		}
@@ -109,35 +149,40 @@ func NewOrm() Ormer {
 	return o
 }
 
-func (o *orm) Using(name string) (err error) {
+func (o *orm) Using(name string) error {
 	if o.isTx {
 		panic(fmt.Errorf("<Ormer.Using> transaction has been start, cannot change db"))
 	}
 	if al, ok := dataBaseCache.get(name); ok {
 		o.alias = al
-		o.db = al.DB
+		db, err := al.getDB()
+		if err != nil {
+			return err
+		}
+		o.db = db
 	} else {
 		return fmt.Errorf("<Ormer.Using> unknown db alias name `%s`", name)
 	}
-	return
+	return nil
 }
-func (o *orm) Begin() (s mongo.Session, err error) {
+func (o *orm) Begin() (err error) {
 	if o.isTx {
 		return
 	}
-	s, err = o.alias.DB.Begin()
+
+	err = o.db.Begin()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	o.isTx = true
 	return
 }
 
-func (o *orm) Commit(s mongo.Session) (err error) {
+func (o *orm) Commit() (err error) {
 	if !o.isTx {
 		return ErrTxDone
 	}
-	err = s.CommitTransaction(todo)
+	err = o.db.Commit()
 	if err == nil {
 		o.isTx = false
 		o.Using(o.alias.Name)
@@ -146,11 +191,11 @@ func (o *orm) Commit(s mongo.Session) (err error) {
 	}
 	return
 }
-func (o *orm) Rollback(s mongo.Session) (err error) {
+func (o *orm) Rollback() (err error) {
 	if !o.isTx {
 		return ErrTxDone
 	}
-	err = s.AbortTransaction(todo)
+	err = o.db.Rollback()
 	if err == nil {
 		o.isTx = false
 		o.Using(o.alias.Name)

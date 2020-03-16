@@ -19,10 +19,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/souliot/siot-mgo-pool/pool"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-
-	"github.com/souliot/siot-mgo-pool/pool"
 )
 
 // DriverType database driver constant int.
@@ -76,23 +75,30 @@ func (ac *_dbCache) getDefault() (al *alias) {
 }
 
 type DB struct {
-	*sync.RWMutex
-	MDB *mongo.Database
+	MDB     *mongo.Database
+	Session mongo.Session
 }
 
 var _ dbQuerier = new(DB)
 
-func (d *DB) Begin() (s mongo.Session, err error) {
-	s, err = d.MDB.Client().StartSession()
+func (d *DB) Begin() (err error) {
+	d.Session, err = d.MDB.Client().StartSession()
 	if err != nil {
 		return
 	}
-	defer s.EndSession(todo)
+	defer d.Session.EndSession(todo)
 
 	//开始事务
-	err = s.StartTransaction()
+	err = d.Session.StartTransaction()
 
 	return
+}
+
+func (d *DB) Commit() (err error) {
+	return d.Session.CommitTransaction(todo)
+}
+func (d *DB) Rollback() (err error) {
+	return d.Session.AbortTransaction(todo)
 }
 
 func (d *DB) GetDB() (s *mongo.Database) {
@@ -106,10 +112,28 @@ type alias struct {
 	DataSource   string
 	MaxIdleConns int
 	MaxOpenConns int
-	DB           *DB
 	DbBaser      dbBaser
 	TZ           *time.Location
 	Engine       string
+}
+
+func (al *alias) getDB() (db *DB, err error) {
+	if al.Name == "" {
+		al.Name = "default"
+	}
+	client, err := pool.GetMgoClient(al.Name)
+	if err != nil {
+		DebugLog.Println(err.Error())
+		return
+	}
+
+	dbNames, err := client.ListDatabaseNames(todo, bson.D{})
+	if err != nil {
+		DebugLog.Println(err.Error())
+		return
+	}
+	db = &DB{client.Database(dbNames[0]), nil}
+	return
 }
 
 func detectTZ(al *alias) {
@@ -118,14 +142,10 @@ func detectTZ(al *alias) {
 	al.TZ = DefaultTimeLoc
 }
 
-func addAliasWthDB(aliasName, driverName string, db *mongo.Database) (*alias, error) {
+func addAlias(aliasName, driverName string) (*alias, error) {
 	al := new(alias)
 	al.Name = aliasName
 	al.DriverName = driverName
-	al.DB = &DB{
-		RWMutex: new(sync.RWMutex),
-		MDB:     db,
-	}
 
 	if dr, ok := drivers[driverName]; ok {
 		al.DbBaser = dbBasers[dr]
@@ -142,8 +162,8 @@ func addAliasWthDB(aliasName, driverName string, db *mongo.Database) (*alias, er
 }
 
 // AddAliasWthDB add a aliasName for the drivename
-func AddAliasWthDB(aliasName, driverName string, db *mongo.Database) error {
-	_, err := addAliasWthDB(aliasName, driverName, db)
+func AddAlias(aliasName, driverName string) error {
+	_, err := addAlias(aliasName, driverName)
 	return err
 }
 
@@ -152,21 +172,13 @@ func RegisterDataBase(aliasName, driverName, dataSource string, params ...int) (
 	var (
 		al *alias
 	)
-	pool.RegisterMgoPool(aliasName, dataSource, params)
-	client, err := pool.GetMgoClient(aliasName)
+	err = pool.RegisterMgoPool(aliasName, dataSource, params...)
 	if err != nil {
 		DebugLog.Println(err.Error())
 		return
 	}
 
-	dbNames, err := client.ListDatabaseNames(todo, bson.D{})
-	if err != nil {
-		DebugLog.Println(err.Error())
-		return
-	}
-	db := client.Database(dbNames[0])
-
-	al, err = addAliasWthDB(aliasName, driverName, db)
+	al, err = addAlias(aliasName, driverName)
 	if err != nil {
 		DebugLog.Println(err.Error())
 		return
@@ -203,16 +215,16 @@ func SetDataBaseTZ(aliasName string, tz *time.Location) error {
 
 // GetDB Get *sql.DB from registered database by db alias name.
 // Use "default" as alias name if you not set.
-func GetDB(aliasNames ...string) (*mongo.Database, error) {
-	var name string
-	if len(aliasNames) > 0 {
-		name = aliasNames[0]
-	} else {
-		name = "default"
-	}
-	al, ok := dataBaseCache.get(name)
-	if ok {
-		return al.DB.MDB, nil
-	}
-	return nil, fmt.Errorf("DataBase of alias name `%s` not found", name)
-}
+// func GetDB(aliasNames ...string) (*mongo.Database, error) {
+// 	var name string
+// 	if len(aliasNames) > 0 {
+// 		name = aliasNames[0]
+// 	} else {
+// 		name = "default"
+// 	}
+// 	al, ok := dataBaseCache.get(name)
+// 	if ok {
+// 		return al.DB.MDB, nil
+// 	}
+// 	return nil, fmt.Errorf("DataBase of alias name `%s` not found", name)
+// }

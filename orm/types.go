@@ -32,11 +32,18 @@ type Fielder interface {
 // Ormer define the orm interface
 type Ormer interface {
 	Read(md interface{}, cols ...string) error
+	ReadOrCreate(md interface{}, col1 string, cols ...string) (bool, int64, error)
+	Insert(interface{}) error
+	// InsertOrUpdate(md interface{}, colConflitAndArgs ...string) (int64, error)
+	// InsertMulti(bulk int, mds interface{}) (int64, error)
+	// Update(md interface{}, cols ...string) (int64, error)
+	// Delete(md interface{}, cols ...string) (int64, error)
+
 	QueryTable(ptrStructOrTableName interface{}) QuerySeter
 
-	Begin() (mongo.Session, error)
-	Commit(mongo.Session) error
-	Rollback(mongo.Session) error
+	Begin() error
+	Commit() error
+	Rollback() error
 	Using(name string) error
 }
 type QuerySeter interface {
@@ -53,27 +60,28 @@ type QuerySeter interface {
 	ForUpdate() QuerySeter
 	Count() (int64, error)
 	Exist() bool
-	Update(values Params) (int64, error)
+	Update(Params) (int64, error)
 	Delete() (int64, error)
-	All(container interface{}, cols ...string) (int64, error)
-	One(container interface{}, cols ...string) error
+	All(interface{}, ...string) (int64, error)
+	One(interface{}, ...string) error
 	Values(results *[]Params, exprs ...string) (int64, error)
 	ValuesList(results *[]ParamsList, exprs ...string) (int64, error)
 	ValuesFlat(result *ParamsList, expr string) (int64, error)
 	RowsToMap(result *Params, keyCol, valueCol string) (int64, error)
 	RowsToStruct(ptrStruct interface{}, keyCol, valueCol string) (int64, error)
 }
-
-// db querier
 type dbQuerier interface {
-	Begin() (mongo.Session, error)
 	GetDB() *mongo.Database
+	Begin() error
+	Commit() error
+	Rollback() error
 }
 
 // base database struct
 type dbBaser interface {
-	Read(dbQuerier, *modelInfo, reflect.Value, *time.Location, []string) error
-	ReadBatch(dbQuerier, *querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) (int64, error)
+	Read(dbQuerier, *modelInfo, reflect.Value, interface{}, *time.Location, []string) error
+	FindOne(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) error
+	Find(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) (int64, error)
 	TimeFromDB(*time.Time, *time.Location)
 	TimeToDB(*time.Time, *time.Location)
 }
