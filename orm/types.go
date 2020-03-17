@@ -32,12 +32,12 @@ type Fielder interface {
 // Ormer define the orm interface
 type Ormer interface {
 	Read(md interface{}, cols ...string) error
-	ReadOrCreate(md interface{}, col1 string, cols ...string) (bool, int64, error)
-	Insert(interface{}) error
+	ReadOrCreate(md interface{}, col1 string, cols ...string) (bool, interface{}, error)
+	Insert(interface{}) (interface{}, error)
+	InsertMulti(mds interface{}) (interface{}, error)
 	// InsertOrUpdate(md interface{}, colConflitAndArgs ...string) (int64, error)
-	// InsertMulti(bulk int, mds interface{}) (int64, error)
-	// Update(md interface{}, cols ...string) (int64, error)
-	// Delete(md interface{}, cols ...string) (int64, error)
+	Update(md interface{}, cols ...string) (interface{}, error)
+	Delete(md interface{}, cols ...string) (interface{}, error)
 
 	QueryTable(ptrStructOrTableName interface{}) QuerySeter
 
@@ -80,8 +80,14 @@ type dbQuerier interface {
 // base database struct
 type dbBaser interface {
 	Read(dbQuerier, *modelInfo, reflect.Value, interface{}, *time.Location, []string) error
+	InsertOne(dbQuerier, *modelInfo, reflect.Value, interface{}, *time.Location) (interface{}, error)
+	InsertMany(dbQuerier, *modelInfo, reflect.Value, interface{}, *time.Location) (interface{}, error)
+	UpdateOne(dbQuerier, *modelInfo, reflect.Value, interface{}, *time.Location, []string) (interface{}, error)
+	DeleteOne(dbQuerier, *modelInfo, reflect.Value, interface{}, *time.Location, []string) (interface{}, error)
+
 	FindOne(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) error
 	Find(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) (int64, error)
+	Count(*querySet, *modelInfo, *Condition, *time.Location) (int64, error)
 	TimeFromDB(*time.Time, *time.Location)
 	TimeToDB(*time.Time, *time.Location)
 }

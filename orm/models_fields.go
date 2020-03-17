@@ -46,6 +46,7 @@ const (
 	RelManyToMany
 	RelReverseOne
 	RelReverseMany
+	MongoStruct
 )
 
 // Define some logic enum
@@ -53,7 +54,7 @@ const (
 	IsIntegerField         = ^-TypePositiveBigIntegerField >> 6 << 7
 	IsPositiveIntegerField = ^-TypePositiveBigIntegerField >> 10 << 11
 	IsRelField             = ^-RelReverseMany >> 18 << 19
-	IsFieldType            = ^-RelReverseMany<<1 + 1
+	IsFieldType            = ^-MongoStruct<<1 + 1
 )
 
 // BooleanField A true/false field.

@@ -110,7 +110,8 @@ func getTableUnique(val reflect.Value) [][]string {
 func getColumnName(ft int, addrField reflect.Value, sf reflect.StructField, col string) string {
 	column := col
 	if col == "" {
-		column = nameStrategyMap[nameStrategy](sf.Name)
+		column = sf.Name
+		// column = nameStrategyMap[nameStrategy](sf.Name)
 	}
 	switch ft {
 	case RelForeignKey, RelOneToOne:

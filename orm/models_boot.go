@@ -63,9 +63,11 @@ func registerModel(PrefixOrSuffix string, model interface{}, isPrefix bool) {
 	if mi.fields.pk == nil {
 	outFor:
 		for _, fi := range mi.fields.fieldsDB {
-			if strings.ToLower(fi.name) == "id" {
+			tag := fi.sf.Tag.Get("bson")
+			// if strings.ToLower(fi.name) == "id" {
+			if strings.ToLower(tag) == "_id" {
 				switch fi.addrValue.Elem().Kind() {
-				case reflect.Int, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint32, reflect.Uint64:
+				case reflect.Int, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint32, reflect.Uint64, reflect.String:
 					fi.auto = true
 					fi.pk = true
 					mi.fields.pk = fi

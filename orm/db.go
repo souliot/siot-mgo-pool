@@ -34,18 +34,6 @@ type dbBase struct {
 	ins dbBaser
 }
 
-var _ dbBaser = new(dbBase)
-
-func (d *dbBase) Read(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location, cols []string) (err error) {
-	return
-}
-func (d *dbBase) Find(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (i int64, err error) {
-	return
-}
-func (d *dbBase) FindOne(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (err error) {
-	return
-}
-
 // convert time from db.
 func (d *dbBase) TimeFromDB(t *time.Time, tz *time.Location) {
 	*t = t.In(tz)

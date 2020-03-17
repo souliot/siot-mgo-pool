@@ -179,7 +179,7 @@ func (o querySet) GetCond() *Condition {
 
 // return QuerySeter execution result number
 func (o *querySet) Count() (i int64, err error) {
-	return
+	return o.orm.alias.DbBaser.Count(o, o.mi, o.cond, o.orm.alias.TZ)
 }
 
 // check result empty or not after QuerySeter executed

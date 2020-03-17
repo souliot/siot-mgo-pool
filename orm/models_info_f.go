@@ -241,6 +241,11 @@ checkType:
 			}
 		}
 
+		if field.Kind() == reflect.Ptr && fieldType == 0 {
+			fieldType = MongoStruct
+			break checkType
+		}
+
 		fieldType, err = getFieldType(addrField)
 		if err != nil {
 			goto end

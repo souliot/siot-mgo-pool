@@ -34,6 +34,7 @@ var (
 	ErrStmtClosed    = errors.New("<QuerySeter> stmt already closed")
 	ErrArgs          = errors.New("<Ormer> args error may be empty")
 	ErrNotImplement  = errors.New("have not implement")
+	ErrHaveNoPK      = errors.New("<Ormer> the PK value should not be nil")
 	todo             = context.TODO()
 )
 
@@ -73,36 +74,61 @@ func (o *orm) Read(md interface{}, cols ...string) (err error) {
 }
 
 // Try to read a row from the database, or insert one if it doesn't exist
-func (o *orm) ReadOrCreate(md interface{}, col1 string, cols ...string) (bool, int64, error) {
+func (o *orm) ReadOrCreate(md interface{}, col1 string, cols ...string) (created bool, id interface{}, err error) {
 	cols = append([]string{col1}, cols...)
 	mi, ind := o.getMiInd(md, true)
-	err := o.alias.DbBaser.Read(o.db, mi, ind, md, o.alias.TZ, cols)
+	err = o.alias.DbBaser.Read(o.db, mi, ind, md, o.alias.TZ, cols)
 	if err == mongo.ErrNoDocuments {
 		// Create
-		err := o.Insert(md)
-		return (err == nil), 0, err
+		id, err = o.Insert(md)
+		return (err == nil), id, err
 	}
 
-	id, vid := int64(0), ind.FieldByIndex(mi.fields.pk.fieldIndex)
+	vid := ind.FieldByIndex(mi.fields.pk.fieldIndex)
 	if mi.fields.pk.fieldType&IsPositiveIntegerField > 0 {
 		id = int64(vid.Uint())
 	} else if mi.fields.pk.rel {
 		return o.ReadOrCreate(vid.Interface(), mi.fields.pk.relModelInfo.fields.pk.name)
-	} else {
-		id = vid.Int()
 	}
 
 	return false, id, err
 }
 
 // insert model data to database
-func (o *orm) Insert(md interface{}) (err error) {
-	// mi, ind := o.getMiInd(md, true)
-	// id, err := o.alias.DbBaser.Insert(o.db, mi, ind, o.alias.TZ)
-	if err != nil {
-		return err
+func (o *orm) Insert(md interface{}) (id interface{}, err error) {
+	mi, ind := o.getMiInd(md, true)
+	id, err = o.alias.DbBaser.InsertOne(o.db, mi, ind, md, o.alias.TZ)
+	return
+}
+
+// insert models data to database
+func (o *orm) InsertMulti(mds interface{}) (ids interface{}, err error) {
+	sind := reflect.Indirect(reflect.ValueOf(mds))
+	switch sind.Kind() {
+	case reflect.Array, reflect.Slice:
+		if sind.Len() == 0 {
+			return nil, ErrArgs
+		}
+	default:
+		return nil, ErrArgs
 	}
-	return nil
+	ind := reflect.Indirect(sind.Index(0))
+	mi, _ := o.getMiInd(ind.Interface(), false)
+	ids, err = o.alias.DbBaser.InsertMany(o.db, mi, ind, mds, o.alias.TZ)
+	return
+}
+
+// cols set the columns those want to update.
+func (o *orm) Update(md interface{}, cols ...string) (interface{}, error) {
+	mi, ind := o.getMiInd(md, true)
+	return o.alias.DbBaser.UpdateOne(o.db, mi, ind, md, o.alias.TZ, cols)
+}
+
+// delete model in database
+// cols shows the delete conditions values read from. default is pk
+func (o *orm) Delete(md interface{}, cols ...string) (interface{}, error) {
+	mi, ind := o.getMiInd(md, true)
+	return o.alias.DbBaser.DeleteOne(o.db, mi, ind, md, o.alias.TZ, cols)
 }
 
 // set auto pk field

@@ -7,6 +7,7 @@ import (
 
 	"github.com/astaxie/beego"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -34,8 +35,6 @@ func newdbBaseMongo() dbBaser {
 func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (i int64, err error) {
 	db := qs.orm.db.(*DB).MDB
 	col := db.Collection(mi.table)
-
-	beego.Info(qs.orders)
 
 	opt := options.Find()
 	if len(cols) > 0 {
@@ -75,6 +74,15 @@ func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, contain
 		i, err = convertCur(cur, container)
 	}
 
+	if i == 0 {
+		err = mongo.ErrNoDocuments
+	}
+
+	return
+}
+
+func (d *dbBaseMongo) Count(qs *querySet, mi *modelInfo, cond *Condition, tz *time.Location) (i int64, err error) {
+
 	return
 }
 
@@ -97,17 +105,143 @@ func (d *dbBaseMongo) FindOne(qs *querySet, mi *modelInfo, cond *Condition, cont
 	if qs != nil && qs.forContext {
 		// Do something with content
 		if err != nil {
-			return err
+			return
 		}
-	} else {
-		// Do something without content
-		data, err := col.FindOne(todo, filter, opt).DecodeBytes()
-		if err != nil {
-			return err
-		}
-		err = bson.Unmarshal(data, container)
 	}
 
+	// Do something without content
+	data, err := col.FindOne(todo, filter, opt).DecodeBytes()
+	if err != nil {
+		return
+	}
+	err = bson.Unmarshal(data, container)
+
+	return
+}
+
+func (d *dbBaseMongo) InsertOne(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location) (id interface{}, err error) {
+	db := q.(*DB).MDB
+	col := db.Collection(mi.table)
+	_, _, b := getExistPk(mi, ind)
+	name := mi.fields.pk.name
+
+	if !b {
+		reflect.ValueOf(container).Elem().FieldByName(name).SetString(primitive.NewObjectID().Hex())
+	}
+
+	opt := options.InsertOne()
+
+	// Do something without content
+	data, err := col.InsertOne(todo, container, opt)
+	if err != nil {
+		return
+	}
+	id = data.InsertedID
+	return
+}
+
+func (d *dbBaseMongo) InsertMany(q dbQuerier, mi *modelInfo, ind reflect.Value, containers interface{}, tz *time.Location) (ids interface{}, err error) {
+	db := q.(*DB).MDB
+	col := db.Collection(mi.table)
+	_, _, b := getExistPk(mi, ind)
+	name := mi.fields.pk.name
+	sind := reflect.Indirect(reflect.ValueOf(containers))
+
+	cs := []interface{}{}
+
+	if !b {
+		for i := 0; i < sind.Len(); i++ {
+			c := reflect.Indirect(sind.Index(i))
+			c.FieldByName(name).SetString(primitive.NewObjectID().Hex())
+			cs = append(cs, c.Interface())
+		}
+	}
+
+	opt := options.InsertMany()
+
+	// Do something without content
+	data, err := col.InsertMany(todo, cs, opt)
+	if err != nil {
+		return
+	}
+	ids = data.InsertedIDs
+	return
+}
+
+// read related records.
+func (d *dbBaseMongo) UpdateOne(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location, cols []string) (id interface{}, err error) {
+	db := q.(*DB).MDB
+	col := db.Collection(mi.table)
+	_, val, b := getExistPk(mi, ind)
+	if !b {
+		return nil, ErrHaveNoPK
+	}
+
+	opt := options.Update()
+	var whereCols []string
+	var args []interface{}
+
+	if len(cols) == 0 {
+		cols = mi.fields.dbcols
+	}
+	whereCols = make([]string, 0, len(cols))
+	args, _, err = d.collectValues(mi, ind, cols, false, false, &whereCols, tz)
+	if err != nil {
+		return
+	}
+
+	filter := bson.M{
+		"_id": val,
+	}
+
+	update := bson.M{}
+	for i, p := range whereCols {
+		update[p] = args[i]
+	}
+
+	update = bson.M{
+		"$set": update,
+	}
+
+	// Do something without content
+	data, err := col.UpdateOne(todo, filter, update, opt)
+	id = data.UpsertedID
+	return
+}
+
+// read related records.
+func (d *dbBaseMongo) DeleteOne(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location, cols []string) (cnt interface{}, err error) {
+	db := q.(*DB).MDB
+	col := db.Collection(mi.table)
+
+	opt := options.Delete()
+	var whereCols []string
+	var args []interface{}
+	if len(cols) > 0 {
+		whereCols = make([]string, 0, len(cols))
+		args, _, err = d.collectValues(mi, ind, cols, false, false, &whereCols, tz)
+		if err != nil {
+			return
+		}
+	} else {
+		// default use pk value as where condtion.
+		pkColumn, pkValue, ok := getExistPk(mi, ind)
+		if !ok {
+			return nil, ErrMissPK
+		}
+		whereCols = []string{pkColumn}
+		args = append(args, pkValue)
+	}
+
+	filter := bson.M{}
+	for i, p := range whereCols {
+		filter[p] = args[i]
+	}
+
+	beego.Info(filter)
+	// Do something without content
+	data, err := col.DeleteOne(todo, filter, opt)
+	cnt = data.DeletedCount
 	return
 }
 
@@ -155,8 +289,7 @@ func convertCondition(cond *Condition) (filter bson.M) {
 	for i, p := range cond.params {
 
 		if p.isCond {
-			f := convertCondition(p.cond)
-			beego.Info(f)
+			filter = convertCondition(p.cond)
 		} else {
 			exprs := p.exprs
 
