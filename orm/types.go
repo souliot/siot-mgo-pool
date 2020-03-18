@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Fielder define field info
@@ -77,8 +76,11 @@ type QuerySeter interface {
 
 type IndexViewer interface {
 	List() (interface{}, error)
-	CreateOne(model mongo.IndexModel, opts ...*options.CreateIndexesOptions) (string, error)
-	CreateMany(models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error)
+	CreateOne(mongo.IndexModel, ...time.Duration) (string, error)
+	CreateMany([]mongo.IndexModel, ...time.Duration) ([]string, error)
+
+	DropOne(string, ...time.Duration) error
+	DropAll(...time.Duration) error
 }
 
 type dbQuerier interface {
