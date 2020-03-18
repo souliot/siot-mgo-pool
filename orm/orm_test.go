@@ -142,7 +142,7 @@ func TestQsDelete(t *testing.T) {
 	num, err := qs.Filter("username", "linleizhou1234").Delete()
 	beego.Info(num, err)
 }
-func TestQsIndexes(t *testing.T) {
+func TestQsIndexList(t *testing.T) {
 	o := NewOrm()
 	o.Using("default")
 
