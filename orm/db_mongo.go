@@ -199,6 +199,14 @@ func (d *dbBaseMongo) DeleteMany(qs *querySet, mi *modelInfo, cond *Condition, t
 	return
 }
 
+// get indexview.
+func (d *dbBaseMongo) Indexes(qs *querySet, mi *modelInfo, tz *time.Location) (iv IndexViewer) {
+	db := qs.orm.db.(*DB).MDB
+	col := db.Collection(mi.table)
+
+	return newIndexView(col.Indexes())
+}
+
 // read one record.
 func (d *dbBaseMongo) Read(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location, cols []string) (err error) {
 	db := q.(*DB).MDB

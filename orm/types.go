@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Fielder define field info
@@ -70,9 +71,17 @@ type QuerySeter interface {
 	ValuesFlat(result *ParamsList, expr string) (int64, error)
 	RowsToMap(result *Params, keyCol, valueCol string) (int64, error)
 	RowsToStruct(ptrStruct interface{}, keyCol, valueCol string) (int64, error)
+
+	IndexView() IndexViewer
 }
+
+type IndexViewer interface {
+	List() (interface{}, error)
+	CreateOne(model mongo.IndexModel, opts ...*options.CreateIndexesOptions) (string, error)
+	CreateMany(models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error)
+}
+
 type dbQuerier interface {
-	GetDB() *mongo.Database
 	Begin() error
 	Commit() error
 	Rollback() error
@@ -91,6 +100,7 @@ type dbBaser interface {
 	Count(*querySet, *modelInfo, *Condition, *time.Location) (int64, error)
 	UpdateMany(*querySet, *modelInfo, *Condition, Params, *time.Location) (int64, error)
 	DeleteMany(*querySet, *modelInfo, *Condition, *time.Location) (int64, error)
+	Indexes(*querySet, *modelInfo, *time.Location) IndexViewer
 	TimeFromDB(*time.Time, *time.Location)
 	TimeToDB(*time.Time, *time.Location)
 }

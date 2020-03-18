@@ -142,3 +142,11 @@ func TestQsDelete(t *testing.T) {
 	num, err := qs.Filter("username", "linleizhou1234").Delete()
 	beego.Info(num, err)
 }
+func TestQsIndexes(t *testing.T) {
+	o := NewOrm()
+	o.Using("default")
+
+	qs := o.QueryTable("log")
+	indexes, err := qs.IndexView().List()
+	beego.Info(indexes, err)
+}

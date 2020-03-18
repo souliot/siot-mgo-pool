@@ -197,6 +197,11 @@ func (o *querySet) Delete() (i int64, err error) {
 	return o.orm.alias.DbBaser.DeleteMany(o, o.mi, o.cond, o.orm.alias.TZ)
 }
 
+// get indexview
+func (o *querySet) IndexView() (iv IndexViewer) {
+	return o.orm.alias.DbBaser.Indexes(o, o.mi, o.orm.alias.TZ)
+}
+
 // query all data and map to containers.
 // cols means the columns when querying.
 func (o *querySet) All(container interface{}, cols ...string) (i int64, err error) {

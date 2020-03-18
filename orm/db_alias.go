@@ -101,10 +101,6 @@ func (d *DB) Rollback() (err error) {
 	return d.Session.AbortTransaction(todo)
 }
 
-func (d *DB) GetDB() (s *mongo.Database) {
-	return d.MDB
-}
-
 type alias struct {
 	Name         string
 	Driver       DriverType
