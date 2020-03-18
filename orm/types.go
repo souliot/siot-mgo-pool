@@ -46,6 +46,7 @@ type Ormer interface {
 	Rollback() error
 	Using(name string) error
 }
+
 type QuerySeter interface {
 	Filter(string, ...interface{}) QuerySeter
 	Exclude(string, ...interface{}) QuerySeter
@@ -88,6 +89,8 @@ type dbBaser interface {
 	FindOne(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) error
 	Find(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) (int64, error)
 	Count(*querySet, *modelInfo, *Condition, *time.Location) (int64, error)
+	UpdateMany(*querySet, *modelInfo, *Condition, Params, *time.Location) (int64, error)
+	DeleteMany(*querySet, *modelInfo, *Condition, *time.Location) (int64, error)
 	TimeFromDB(*time.Time, *time.Location)
 	TimeToDB(*time.Time, *time.Location)
 }

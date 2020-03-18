@@ -189,12 +189,12 @@ func (o *querySet) Exist() bool {
 
 // execute update with parameters
 func (o *querySet) Update(values Params) (i int64, err error) {
-	return
+	return o.orm.alias.DbBaser.UpdateMany(o, o.mi, o.cond, values, o.orm.alias.TZ)
 }
 
 // execute delete
 func (o *querySet) Delete() (i int64, err error) {
-	return
+	return o.orm.alias.DbBaser.DeleteMany(o, o.mi, o.cond, o.orm.alias.TZ)
 }
 
 // query all data and map to containers.

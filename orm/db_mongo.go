@@ -2,10 +2,10 @@ package orm
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
-	"github.com/astaxie/beego"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -31,7 +31,46 @@ func newdbBaseMongo() dbBaser {
 	return b
 }
 
-// read related records.
+// read one record.
+func (d *dbBaseMongo) FindOne(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (err error) {
+	db := qs.orm.db.(*DB).MDB
+	col := db.Collection(mi.table)
+
+	opt := options.FindOne()
+	if len(cols) > 0 {
+		projection := bson.M{}
+		for _, col := range cols {
+			projection[col] = 1
+		}
+		opt.SetProjection(projection)
+	}
+
+	if len(qs.orders) > 0 {
+		opt.SetSort(getSort(qs.orders))
+	}
+
+	if qs.offset != 0 {
+		opt.SetSkip(qs.offset)
+	}
+
+	filter := convertCondition(cond)
+	var data []byte
+	if qs != nil && qs.forContext {
+		data, err = col.FindOne(qs.ctx, filter, opt).DecodeBytes()
+	} else {
+		data, err = col.FindOne(todo, filter, opt).DecodeBytes()
+	}
+
+	// Do something without content
+	if err != nil {
+		return
+	}
+	err = bson.Unmarshal(data, container)
+
+	return
+}
+
+// read all records.
 func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (i int64, err error) {
 	db := qs.orm.db.(*DB).MDB
 	col := db.Collection(mi.table)
@@ -59,20 +98,20 @@ func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, contain
 
 	filter := convertCondition(cond)
 
+	cur := &mongo.Cursor{}
+
 	if qs != nil && qs.forContext {
 		// Do something with content
-		if err != nil {
-			return 0, err
-		}
+		cur, err = col.Find(qs.ctx, filter, opt)
 	} else {
 		// Do something without content
-		cur, err := col.Find(todo, filter, opt)
-		defer cur.Close(todo)
-		if err != nil {
-			return 0, err
-		}
-		i, err = convertCur(cur, container)
+		cur, err = col.Find(todo, filter, opt)
 	}
+	defer cur.Close(todo)
+	if err != nil {
+		return 0, err
+	}
+	i, err = convertCur(cur, container)
 
 	if i == 0 {
 		err = mongo.ErrNoDocuments
@@ -81,44 +120,126 @@ func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, contain
 	return
 }
 
+// get the recodes count.
 func (d *dbBaseMongo) Count(qs *querySet, mi *modelInfo, cond *Condition, tz *time.Location) (i int64, err error) {
-
-	return
-}
-
-// read related records.
-func (d *dbBaseMongo) FindOne(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (err error) {
 	db := qs.orm.db.(*DB).MDB
 	col := db.Collection(mi.table)
 
-	opt := options.FindOne()
-	if len(cols) > 0 {
-		projection := bson.M{}
-		for _, col := range cols {
-			projection[col] = 1
-		}
-		opt.SetProjection(projection)
-	}
+	opt := options.Count()
 
 	filter := convertCondition(cond)
 
 	if qs != nil && qs.forContext {
-		// Do something with content
-		if err != nil {
-			return
+		i, err = col.CountDocuments(qs.ctx, filter, opt)
+	} else {
+		// Do something without content
+		i, err = col.CountDocuments(todo, filter, opt)
+	}
+
+	return
+}
+
+// update the recodes.
+func (d *dbBaseMongo) UpdateMany(qs *querySet, mi *modelInfo, cond *Condition, params Params, tz *time.Location) (i int64, err error) {
+	db := qs.orm.db.(*DB).MDB
+	col := db.Collection(mi.table)
+
+	opt := options.Update()
+
+	filter := convertCondition(cond)
+	update := bson.M{}
+	for col, val := range params {
+		if fi, ok := mi.fields.GetByAny(col); !ok || !fi.dbcol {
+			panic(fmt.Errorf("wrong field/column name `%s`", col))
+		} else {
+			update[fi.column] = val
 		}
+	}
+	update = bson.M{
+		"$set": update,
+	}
+	r := &mongo.UpdateResult{}
+	if qs != nil && qs.forContext {
+		r, err = col.UpdateMany(qs.ctx, filter, update, opt)
+	} else {
+		// Do something without content
+		r, err = col.UpdateMany(todo, filter, update, opt)
+	}
+	if err != nil {
+		return
+	}
+
+	i = r.ModifiedCount
+
+	return
+}
+
+// delete the recodes.
+func (d *dbBaseMongo) DeleteMany(qs *querySet, mi *modelInfo, cond *Condition, tz *time.Location) (i int64, err error) {
+	db := qs.orm.db.(*DB).MDB
+	col := db.Collection(mi.table)
+
+	opt := options.Delete()
+
+	filter := convertCondition(cond)
+
+	r := &mongo.DeleteResult{}
+	if qs != nil && qs.forContext {
+		r, err = col.DeleteMany(qs.ctx, filter, opt)
+	} else {
+		// Do something without content
+		r, err = col.DeleteMany(todo, filter, opt)
+	}
+	if err != nil {
+		return
+	}
+
+	i = r.DeletedCount
+
+	return
+}
+
+// read one record.
+func (d *dbBaseMongo) Read(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location, cols []string) (err error) {
+	db := q.(*DB).MDB
+	col := db.Collection(mi.table)
+
+	opt := options.FindOne()
+
+	var whereCols []string
+	var args []interface{}
+	if len(cols) > 0 {
+		whereCols = make([]string, 0, len(cols))
+		args, _, err = d.collectValues(mi, ind, cols, false, false, &whereCols, tz)
+		if err != nil {
+			return err
+		}
+	} else {
+		// default use pk value as where condtion.
+		pkColumn, pkValue, ok := getExistPk(mi, ind)
+		if !ok {
+			return ErrMissPK
+		}
+		whereCols = []string{pkColumn}
+		args = append(args, pkValue)
+	}
+
+	filter := bson.M{}
+	for i, p := range whereCols {
+		filter[p] = args[i]
 	}
 
 	// Do something without content
 	data, err := col.FindOne(todo, filter, opt).DecodeBytes()
 	if err != nil {
-		return
+		return err
 	}
 	err = bson.Unmarshal(data, container)
 
 	return
 }
 
+// insert one record.
 func (d *dbBaseMongo) InsertOne(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location) (id interface{}, err error) {
 	db := q.(*DB).MDB
 	col := db.Collection(mi.table)
@@ -140,6 +261,7 @@ func (d *dbBaseMongo) InsertOne(q dbQuerier, mi *modelInfo, ind reflect.Value, c
 	return
 }
 
+// insert all records.
 func (d *dbBaseMongo) InsertMany(q dbQuerier, mi *modelInfo, ind reflect.Value, containers interface{}, tz *time.Location) (ids interface{}, err error) {
 	db := q.(*DB).MDB
 	col := db.Collection(mi.table)
@@ -168,7 +290,7 @@ func (d *dbBaseMongo) InsertMany(q dbQuerier, mi *modelInfo, ind reflect.Value, 
 	return
 }
 
-// read related records.
+// update one record.
 func (d *dbBaseMongo) UpdateOne(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location, cols []string) (id interface{}, err error) {
 	db := q.(*DB).MDB
 	col := db.Collection(mi.table)
@@ -209,7 +331,7 @@ func (d *dbBaseMongo) UpdateOne(q dbQuerier, mi *modelInfo, ind reflect.Value, c
 	return
 }
 
-// read related records.
+// delete one record.
 func (d *dbBaseMongo) DeleteOne(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location, cols []string) (cnt interface{}, err error) {
 	db := q.(*DB).MDB
 	col := db.Collection(mi.table)
@@ -238,49 +360,9 @@ func (d *dbBaseMongo) DeleteOne(q dbQuerier, mi *modelInfo, ind reflect.Value, c
 		filter[p] = args[i]
 	}
 
-	beego.Info(filter)
 	// Do something without content
 	data, err := col.DeleteOne(todo, filter, opt)
 	cnt = data.DeletedCount
-	return
-}
-
-func (d *dbBaseMongo) Read(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location, cols []string) (err error) {
-	db := q.(*DB).MDB
-	col := db.Collection(mi.table)
-
-	opt := options.FindOne()
-
-	var whereCols []string
-	var args []interface{}
-	if len(cols) > 0 {
-		whereCols = make([]string, 0, len(cols))
-		args, _, err = d.collectValues(mi, ind, cols, false, false, &whereCols, tz)
-		if err != nil {
-			return err
-		}
-	} else {
-		// default use pk value as where condtion.
-		pkColumn, pkValue, ok := getExistPk(mi, ind)
-		if !ok {
-			return ErrMissPK
-		}
-		whereCols = []string{pkColumn}
-		args = append(args, pkValue)
-	}
-
-	filter := bson.M{}
-	for i, p := range whereCols {
-		filter[p] = args[i]
-	}
-
-	// Do something without content
-	data, err := col.FindOne(todo, filter, opt).DecodeBytes()
-	if err != nil {
-		return err
-	}
-	err = bson.Unmarshal(data, container)
-
 	return
 }
 

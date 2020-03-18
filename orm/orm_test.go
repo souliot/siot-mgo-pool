@@ -1,7 +1,6 @@
 package orm
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/astaxie/beego"
@@ -31,8 +30,8 @@ func init() {
 	RegisterModel(new(Logs2))
 
 	RegisterDriver("mongo", DRMongo)
-	// RegisterDataBase("default", "mongo", "mongodb://yapi:abcd1234@192.168.50.200:27017/yapi")
-	RegisterDataBase("default", "mongo", "mongodb://yapi:abcd1234@vm:27017/yapi")
+	RegisterDataBase("default", "mongo", "mongodb://yapi:abcd1234@192.168.50.200:27017/yapi")
+	// RegisterDataBase("default", "mongo", "mongodb://yapi:abcd1234@vm:27017/yapi")
 
 }
 
@@ -46,12 +45,14 @@ var (
 func TestRead(t *testing.T) {
 	o := NewOrm()
 	o.Using("default")
+
 	err := o.Read(&l, "UserName")
 	beego.Info(err, l)
 }
 func TestReadOrCreate(t *testing.T) {
 	o := NewOrm()
 	o.Using("default")
+
 	c, id, err := o.ReadOrCreate(&l, "UserName")
 	beego.Info(c, id, err, l)
 }
@@ -59,7 +60,7 @@ func TestReadOrCreate(t *testing.T) {
 func TestInsert(t *testing.T) {
 	o := NewOrm()
 	o.Using("default")
-	l.UserName = "1qewe"
+
 	id, err := o.Insert(&l)
 	beego.Info(id, err)
 }
@@ -67,6 +68,7 @@ func TestInsert(t *testing.T) {
 func TestInsertMulti(t *testing.T) {
 	o := NewOrm()
 	o.Using("default")
+
 	ls := []Logs{}
 	ls = append(ls, l)
 	ls = append(ls, l)
@@ -77,33 +79,36 @@ func TestInsertMulti(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	o := NewOrm()
 	o.Using("default")
-	l.Ids = "5e70bb453d550128d8493a3a"
+
+	l.Ids = "5e71816fee8b0d2ba0d24939"
 	l.Ltype = "group3"
 	id, err := o.Update(&l)
-	beego.Info(id, err)
+	beego.Info(id, err, l)
 }
 
 func TestDelete(t *testing.T) {
 	o := NewOrm()
 	o.Using("default")
-	l.Ids = "5e70bb453d550128d8493a3a"
+
+	l.Ids = "5e71816fee8b0d2ba0d24939"
 	l.Ltype = "group"
-	id, err := o.Delete(&l, "Ltype")
-	beego.Info(id, err)
+	cnt, err := o.Delete(&l, "Ltype")
+	beego.Info(cnt, err)
 }
 
-func TestOne(t *testing.T) {
+func TestQsOne(t *testing.T) {
 	o := NewOrm()
 	o.Using("default")
+
 	qs := o.QueryTable("log")
 	err := qs.Filter("username", "linleizhou1234").One(&l, "username", "type")
 	beego.Info(err, l)
 }
 
-func TestAll(t *testing.T) {
+func TestQsAll(t *testing.T) {
 	o := NewOrm()
-
 	o.Using("default")
+
 	var ls []Logs
 	qs := o.QueryTable("log")
 	num, err := qs.Filter("username", "linleizhou1234").OrderBy("-_id", "type").Offset(0).Limit(100).All(&ls)
@@ -111,16 +116,29 @@ func TestAll(t *testing.T) {
 	beego.Info(ls)
 }
 
-func TestMy(t *testing.T) {
-	Up2(&l)
-	beego.Info(l)
-}
+func TestQsCount(t *testing.T) {
+	o := NewOrm()
+	o.Using("default")
 
-func Update(d interface{}) {
-	v := reflect.ValueOf(d).Elem()
-	v.FieldByName("Ids").SetString("asdsda")
+	qs := o.QueryTable("log")
+	num, err := qs.Filter("username", "linleizhou1234").Count()
+	beego.Info(num, err)
 }
+func TestQsUpdate(t *testing.T) {
+	o := NewOrm()
+	o.Using("default")
 
-func Up2(d interface{}) {
-	Update(d)
+	qs := o.QueryTable("log")
+	num, err := qs.Filter("username", "linleizhou123").Update(Params{
+		"username": "linleizhou1234",
+	})
+	beego.Info(num, err)
+}
+func TestQsDelete(t *testing.T) {
+	o := NewOrm()
+	o.Using("default")
+
+	qs := o.QueryTable("log")
+	num, err := qs.Filter("username", "linleizhou1234").Delete()
+	beego.Info(num, err)
 }
