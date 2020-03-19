@@ -63,7 +63,8 @@ func getTableName(val reflect.Value) string {
 			return vals[0].String()
 		}
 	}
-	return snakeString(reflect.Indirect(val).Type().Name())
+
+	return nameStrategyMap[MongoNameStrategy](reflect.Indirect(val).Type().Name())
 }
 
 // get table engine, myisam or innodb.
@@ -195,6 +196,8 @@ func getFieldType(val reflect.Value) (ft int, err error) {
 			case time.Time:
 				ft = TypeDateTimeField
 			}
+
+			ft = TypeUnknow
 		}
 	}
 	if ft&IsFieldType == 0 {

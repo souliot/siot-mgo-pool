@@ -148,7 +148,7 @@ func (o *orm) setPk(mi *modelInfo, ind reflect.Value, id int64) {
 func (o *orm) QueryTable(ptrStructOrTableName interface{}) (qs QuerySeter) {
 	var name string
 	if table, ok := ptrStructOrTableName.(string); ok {
-		name = nameStrategyMap[defaultNameStrategy](table)
+		name = nameStrategyMap[MongoNameStrategy](table)
 		if mi, ok := modelCache.get(name); ok {
 			qs = newQuerySet(o, mi)
 		}

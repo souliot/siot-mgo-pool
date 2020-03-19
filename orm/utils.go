@@ -28,9 +28,11 @@ type fn func(string) string
 var (
 	nameStrategyMap = map[string]fn{
 		defaultNameStrategy:      snakeString,
+		MongoNameStrategy:        noSnakeString,
 		SnakeAcronymNameStrategy: snakeStringWithAcronym,
 	}
 	defaultNameStrategy      = "snakeString"
+	MongoNameStrategy        = "noSnakeString"
 	SnakeAcronymNameStrategy = "snakeStringWithAcronym"
 	nameStrategy             = defaultNameStrategy
 )
@@ -247,6 +249,10 @@ func snakeString(s string) string {
 		data = append(data, d)
 	}
 	return strings.ToLower(string(data[:]))
+}
+
+func noSnakeString(s string) string {
+	return s
 }
 
 // SetNameStrategy set different name strategy

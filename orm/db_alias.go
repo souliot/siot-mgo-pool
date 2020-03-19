@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/souliot/siot-mgo-pool/pool"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 )
 
 // DriverType database driver constant int.
@@ -123,12 +123,8 @@ func (al *alias) getDB() (db *DB, err error) {
 		return
 	}
 
-	dbNames, err := client.ListDatabaseNames(todo, bson.D{})
-	if err != nil {
-		DebugLog.Println(err.Error())
-		return
-	}
-	db = &DB{client.Database(dbNames[0]), nil}
+	dbNames := getDatabase(al.DataSource)
+	db = &DB{client.Database(dbNames), nil}
 	return
 }
 
@@ -209,18 +205,12 @@ func SetDataBaseTZ(aliasName string, tz *time.Location) error {
 	return nil
 }
 
-// GetDB Get *sql.DB from registered database by db alias name.
-// Use "default" as alias name if you not set.
-// func GetDB(aliasNames ...string) (*mongo.Database, error) {
-// 	var name string
-// 	if len(aliasNames) > 0 {
-// 		name = aliasNames[0]
-// 	} else {
-// 		name = "default"
-// 	}
-// 	al, ok := dataBaseCache.get(name)
-// 	if ok {
-// 		return al.DB.MDB, nil
-// 	}
-// 	return nil, fmt.Errorf("DataBase of alias name `%s` not found", name)
-// }
+func getDatabase(uri string) (dbName string) {
+	cs, err := connstring.Parse(uri)
+	if err != nil {
+		dbName = "test"
+		return
+	}
+	dbName = cs.Database
+	return
+}

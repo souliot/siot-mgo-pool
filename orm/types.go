@@ -17,8 +17,6 @@ package orm
 import (
 	"reflect"
 	"time"
-
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Fielder define field info
@@ -76,8 +74,8 @@ type QuerySeter interface {
 
 type IndexViewer interface {
 	List() (interface{}, error)
-	CreateOne(mongo.IndexModel, ...time.Duration) (string, error)
-	CreateMany([]mongo.IndexModel, ...time.Duration) ([]string, error)
+	CreateOne(Index, ...time.Duration) (string, error)
+	CreateMany([]Index, ...time.Duration) ([]string, error)
 
 	DropOne(string, ...time.Duration) error
 	DropAll(...time.Duration) error
