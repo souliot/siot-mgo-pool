@@ -2,8 +2,7 @@ package orm
 
 import (
 	"testing"
-
-	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
+	"time"
 
 	"github.com/astaxie/beego"
 )
@@ -173,8 +172,10 @@ func TestQsIndexDropOne(t *testing.T) {
 	beego.Info(err)
 }
 func TestOther(t *testing.T) {
-	uri := "mongodb://@192.168.0.4:27017/Darwin-XYY"
-	cs, err := connstring.Parse(uri)
-	beego.Info(err)
-	beego.Info(cs.Database)
+	// uri := "mongodb://@192.168.0.4:27017/Darwin-XYY"
+	// cs, err := connstring.Parse(uri)
+	// beego.Info(err)
+	// beego.Info(cs.Database)
+	beego.Info(time.Now().Unix())
+	beego.Info(time.Now().UTC().Unix())
 }

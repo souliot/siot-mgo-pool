@@ -184,7 +184,8 @@ func (o *querySet) Count() (i int64, err error) {
 
 // check result empty or not after QuerySeter executed
 func (o *querySet) Exist() bool {
-	return true
+	cnt, _ := o.orm.alias.DbBaser.Count(o, o.mi, o.cond, o.orm.alias.TZ)
+	return cnt > 0
 }
 
 // execute update with parameters

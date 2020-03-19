@@ -35,6 +35,7 @@ var (
 	ErrArgs          = errors.New("<Ormer> args error may be empty")
 	ErrNotImplement  = errors.New("have not implement")
 	ErrHaveNoPK      = errors.New("<Ormer> the PK value should not be nil")
+	ErrNoDocuments   = mongo.ErrNoDocuments
 	todo             = context.TODO()
 )
 
