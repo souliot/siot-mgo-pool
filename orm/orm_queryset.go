@@ -189,8 +189,8 @@ func (o *querySet) Exist() bool {
 }
 
 // execute update with parameters
-func (o *querySet) Update(values Params) (i int64, err error) {
-	return o.orm.alias.DbBaser.UpdateMany(o, o.mi, o.cond, values, o.orm.alias.TZ)
+func (o *querySet) Update(operator OperatorUpdate, values Params) (i int64, err error) {
+	return o.orm.alias.DbBaser.UpdateMany(o, o.mi, o.cond, operator, values, o.orm.alias.TZ)
 }
 
 // execute delete

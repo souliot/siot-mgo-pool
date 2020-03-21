@@ -27,6 +27,7 @@ var (
 		"in":          true,
 		"between":     true,
 		"isnull":      true,
+		"regex":       true,
 	}
 )
 

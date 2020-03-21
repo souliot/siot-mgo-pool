@@ -8,7 +8,7 @@ import (
 )
 
 type Logs struct {
-	Ids      string `orm:"column(_id)" bson:"_id"`
+	Ids      string `bson:"_id"`
 	Ltype    string `orm:"column(type)" bson:"type"`
 	UserName string `orm:"column(username)"  bson:"username"`
 	L2       *Logs2 `bson:"l2"`
@@ -31,8 +31,8 @@ func init() {
 	RegisterModel(new(Logs2))
 
 	RegisterDriver("mongo", DRMongo)
-	// RegisterDataBase("default", "mongo", "mongodb://yapi:abcd1234@192.168.50.200:27017/yapi")
-	RegisterDataBase("default", "mongo", "mongodb://yapi:abcd1234@vm:27017/yapi")
+	RegisterDataBase("default", "mongo", "mongodb://yapi:abcd1234@192.168.50.200:27017/yapi")
+	// RegisterDataBase("default", "mongo", "mongodb://yapi:abcd1234@vm:27017/yapi")
 
 }
 
@@ -81,7 +81,7 @@ func TestUpdate(t *testing.T) {
 	o := NewOrm()
 	o.Using("default")
 
-	l.Ids = "5e72fce41465edf903db7a62"
+	l.Ids = "5e7431f78c1b4111312cce2d"
 	l.Ltype = "group3"
 	id, err := o.Update(&l, "Ltype")
 	beego.Info(id, err, l)
@@ -111,7 +111,8 @@ func TestQsAll(t *testing.T) {
 	o.Using("default")
 	var ls []Logs
 	qs := o.QueryTable("log")
-	num, err := qs.Filter("username", "linleizhou1234").OrderBy("-_id", "Ltype").Offset(0).Limit(100).All(&ls)
+	num, err := qs.Filter("username__regex", "linleizhou").OrderBy("-_id", "Ltype").Limit(2, 0).All(&ls)
+	// num, err := qs.All(&ls)
 	beego.Info(num, err)
 	beego.Info(ls)
 }
@@ -122,6 +123,7 @@ func TestQsCount(t *testing.T) {
 
 	qs := o.QueryTable("log")
 	num, err := qs.Filter("username", "linleizhou1234").Count()
+	// num, err := qs.Count()
 	beego.Info(num, err)
 }
 func TestQsUpdate(t *testing.T) {
@@ -129,8 +131,8 @@ func TestQsUpdate(t *testing.T) {
 	o.Using("default")
 
 	qs := o.QueryTable("log")
-	num, err := qs.Filter("_id", "5e72fce41465edf903db7a63").Update(Params{
-		"type": "group3",
+	num, err := qs.Filter("_id", "5e7431f78c1b4111312cce2d").Update(MgoSet, Params{
+		"type": "group",
 	})
 	beego.Info(num, err)
 }

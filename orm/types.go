@@ -59,7 +59,7 @@ type QuerySeter interface {
 	ForUpdate() QuerySeter
 	Count() (int64, error)
 	Exist() bool
-	Update(Params) (int64, error)
+	Update(OperatorUpdate, Params) (int64, error)
 	Delete() (int64, error)
 	All(interface{}, ...string) (int64, error)
 	One(interface{}, ...string) error
@@ -98,7 +98,7 @@ type dbBaser interface {
 	FindOne(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) error
 	Find(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) (int64, error)
 	Count(*querySet, *modelInfo, *Condition, *time.Location) (int64, error)
-	UpdateMany(*querySet, *modelInfo, *Condition, Params, *time.Location) (int64, error)
+	UpdateMany(*querySet, *modelInfo, *Condition, OperatorUpdate, Params, *time.Location) (int64, error)
 	DeleteMany(*querySet, *modelInfo, *Condition, *time.Location) (int64, error)
 	Indexes(*querySet, *modelInfo, *time.Location) IndexViewer
 	TimeFromDB(*time.Time, *time.Location)

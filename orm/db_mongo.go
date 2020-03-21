@@ -2,10 +2,11 @@ package orm
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
+	"github.com/astaxie/beego"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -15,6 +16,22 @@ import (
 var (
 	// ErrMissPK missing pk error
 	ErrMissPK = errors.New("missed pk value")
+)
+
+type OperatorUpdate string
+
+var (
+	MgoSet         OperatorUpdate = "$set"
+	MgoUnSet       OperatorUpdate = "$unset"
+	MgoInc         OperatorUpdate = "$inc"
+	MgoPush        OperatorUpdate = "$push"
+	MgoPushAll     OperatorUpdate = "$pushAll"
+	MgoAddToSet    OperatorUpdate = "$addToSet"
+	MgoPop         OperatorUpdate = "$pop"
+	MgoPull        OperatorUpdate = "$pull"
+	MgoPullAll     OperatorUpdate = "$pullAll"
+	MgoRename      OperatorUpdate = "$rename"
+	MgoSetOnInsert OperatorUpdate = "$setOnInsert"
 )
 
 // mysql dbBaser implementation.
@@ -54,6 +71,8 @@ func (d *dbBaseMongo) FindOne(qs *querySet, mi *modelInfo, cond *Condition, cont
 	}
 
 	filter := convertCondition(cond)
+
+	beego.Info(filter)
 	var data []byte
 	if qs != nil && qs.forContext {
 		data, err = col.FindOne(qs.ctx, filter, opt).DecodeBytes()
@@ -97,6 +116,7 @@ func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, contain
 	}
 
 	filter := convertCondition(cond)
+	beego.Info(filter)
 
 	cur := &mongo.Cursor{}
 
@@ -112,10 +132,6 @@ func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, contain
 		return 0, err
 	}
 	i, err = convertCur(cur, container)
-
-	if i == 0 {
-		err = mongo.ErrNoDocuments
-	}
 
 	return
 }
@@ -140,7 +156,7 @@ func (d *dbBaseMongo) Count(qs *querySet, mi *modelInfo, cond *Condition, tz *ti
 }
 
 // update the recodes.
-func (d *dbBaseMongo) UpdateMany(qs *querySet, mi *modelInfo, cond *Condition, params Params, tz *time.Location) (i int64, err error) {
+func (d *dbBaseMongo) UpdateMany(qs *querySet, mi *modelInfo, cond *Condition, operator OperatorUpdate, params Params, tz *time.Location) (i int64, err error) {
 	db := qs.orm.db.(*DB).MDB
 	col := db.Collection(mi.table)
 
@@ -149,14 +165,14 @@ func (d *dbBaseMongo) UpdateMany(qs *querySet, mi *modelInfo, cond *Condition, p
 	filter := convertCondition(cond)
 	update := bson.M{}
 	for col, val := range params {
-		if fi, ok := mi.fields.GetByAny(col); !ok || !fi.dbcol {
-			panic(fmt.Errorf("wrong field/column name `%s`", col))
-		} else {
-			update[fi.column] = val
-		}
+		// if fi, ok := mi.fields.GetByAny(col); !ok || !fi.dbcol {
+		// 	panic(fmt.Errorf("wrong field/column name `%s`", col))
+		// } else {
+		update[col] = val
+		// }
 	}
 	update = bson.M{
-		"$set": update,
+		string(operator): update,
 	}
 	r := &mongo.UpdateResult{}
 	if qs != nil && qs.forContext {
@@ -376,6 +392,9 @@ func (d *dbBaseMongo) DeleteOne(q dbQuerier, mi *modelInfo, ind reflect.Value, c
 
 func convertCondition(cond *Condition) (filter bson.M) {
 	filter = bson.M{}
+	if cond == nil {
+		return
+	}
 	for i, p := range cond.params {
 
 		if p.isCond {
@@ -415,28 +434,19 @@ func convertCondition(cond *Condition) (filter bson.M) {
 }
 
 func getCond(params []string, args []interface{}, operator string) (k string, v interface{}) {
-	r := getCondBson(params, args, operator)
-	if len(params) > 0 {
-		return params[0], r[params[0]]
-	}
-	return
-}
-
-func getCondBson(params []string, args []interface{}, operator string) (r bson.M) {
-	r = bson.M{}
-	if len(params) == 0 || len(args) == 0 {
-		return
-	}
-
-	if len(params) == 1 {
-		if len(args) == 1 {
-			r[params[0]] = bson.M{"$" + operator: args[0]}
-			return
+	k = strings.Join(params, ".")
+	if len(args) == 0 {
+		v = bson.M{}
+	} else if len(args) == 1 {
+		v = bson.M{
+			"$" + operator: args[0],
 		}
-		r[params[0]] = bson.M{"$" + operator: args}
-		return
+	} else {
+		v = bson.M{
+			"$" + operator: args,
+		}
 	}
-	r[params[0]] = bson.M{"$" + operator: getCondBson(params[1:], args, operator)}
+
 	return
 }
 
@@ -476,7 +486,7 @@ func convertCur(cur *mongo.Cursor, v interface{}) (i int64, err error) {
 	for cur.Next(todo) {
 		elemp := reflect.New(elemt)
 		if err = bson.Unmarshal(cur.Current, elemp.Interface()); err != nil {
-			return
+			continue
 		}
 		slicev = reflect.Append(slicev, elemp.Elem())
 		i++

@@ -106,6 +106,7 @@ type alias struct {
 	Driver       DriverType
 	DriverName   string
 	DataSource   string
+	DbName       string
 	MaxIdleConns int
 	MaxOpenConns int
 	DbBaser      dbBaser
@@ -123,8 +124,7 @@ func (al *alias) getDB() (db *DB, err error) {
 		return
 	}
 
-	dbNames := getDatabase(al.DataSource)
-	db = &DB{client.Database(dbNames), nil}
+	db = &DB{client.Database(al.DbName), nil}
 	return
 }
 
@@ -177,6 +177,7 @@ func RegisterDataBase(aliasName, driverName, dataSource string, params ...int) (
 	}
 
 	al.DataSource = dataSource
+	al.DbName = getDatabase(al.DataSource)
 
 	detectTZ(al)
 
