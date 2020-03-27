@@ -116,8 +116,6 @@ func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, contain
 	}
 
 	filter := convertCondition(cond)
-	beego.Info(filter)
-
 	cur := &mongo.Cursor{}
 
 	if qs != nil && qs.forContext {
@@ -146,10 +144,18 @@ func (d *dbBaseMongo) Count(qs *querySet, mi *modelInfo, cond *Condition, tz *ti
 	filter := convertCondition(cond)
 
 	if qs != nil && qs.forContext {
-		i, err = col.CountDocuments(qs.ctx, filter, opt)
+		if len(filter) == 0 {
+			i, err = col.EstimatedDocumentCount(qs.ctx, nil)
+		} else {
+			i, err = col.CountDocuments(qs.ctx, filter, opt)
+		}
 	} else {
 		// Do something without content
-		i, err = col.CountDocuments(todo, filter, opt)
+		if len(filter) == 0 {
+			i, err = col.EstimatedDocumentCount(todo, nil)
+		} else {
+			i, err = col.CountDocuments(todo, filter, opt)
+		}
 	}
 
 	return
@@ -318,7 +324,7 @@ func (d *dbBaseMongo) InsertMany(q dbQuerier, mi *modelInfo, ind reflect.Value, 
 func (d *dbBaseMongo) UpdateOne(q dbQuerier, mi *modelInfo, ind reflect.Value, container interface{}, tz *time.Location, cols []string) (id interface{}, err error) {
 	db := q.(*DB).MDB
 	col := db.Collection(mi.table)
-	_, val, b := getExistPk(mi, ind)
+	c, val, b := getExistPk(mi, ind)
 	if !b {
 		return nil, ErrHaveNoPK
 	}
@@ -342,7 +348,9 @@ func (d *dbBaseMongo) UpdateOne(q dbQuerier, mi *modelInfo, ind reflect.Value, c
 
 	update := bson.M{}
 	for i, p := range whereCols {
-		update[p] = args[i]
+		if p != c {
+			update[p] = args[i]
+		}
 	}
 
 	update = bson.M{
