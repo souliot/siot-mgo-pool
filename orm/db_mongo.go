@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/astaxie/beego"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -72,7 +71,6 @@ func (d *dbBaseMongo) FindOne(qs *querySet, mi *modelInfo, cond *Condition, cont
 
 	filter := convertCondition(cond)
 
-	beego.Info(filter)
 	var data []byte
 	if qs != nil && qs.forContext {
 		data, err = col.FindOne(qs.ctx, filter, opt).DecodeBytes()
@@ -90,7 +88,7 @@ func (d *dbBaseMongo) FindOne(qs *querySet, mi *modelInfo, cond *Condition, cont
 }
 
 // read all records.
-func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (i int64, err error) {
+func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (err error) {
 	db := qs.orm.db.(*DB).MDB
 	col := db.Collection(mi.table)
 
@@ -125,11 +123,11 @@ func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, contain
 		// Do something without content
 		cur, err = col.Find(todo, filter, opt)
 	}
-	defer cur.Close(todo)
+	// defer cur.Close(todo)
 	if err != nil {
-		return 0, err
+		return
 	}
-	i, err = convertCur(cur, container)
+	err = cur.All(todo, container)
 
 	return
 }
@@ -258,7 +256,6 @@ func (d *dbBaseMongo) Read(q dbQuerier, mi *modelInfo, ind reflect.Value, contai
 	for i, p := range whereCols {
 		filter[p] = args[i]
 	}
-
 	// Do something without content
 	data, err := col.FindOne(todo, filter, opt).DecodeBytes()
 	if err != nil {
@@ -343,7 +340,7 @@ func (d *dbBaseMongo) UpdateOne(q dbQuerier, mi *modelInfo, ind reflect.Value, c
 	}
 
 	filter := bson.M{
-		"_id": val,
+		c: val,
 	}
 
 	update := bson.M{}
@@ -472,33 +469,5 @@ func getSort(orders []string) (r bson.M) {
 		}
 	}
 
-	return
-}
-
-func convertCur(cur *mongo.Cursor, v interface{}) (i int64, err error) {
-	resultv := reflect.ValueOf(v)
-	if resultv.Kind() != reflect.Ptr {
-		panic("result argument must be a slice address")
-	}
-	slicev := resultv.Elem()
-
-	if slicev.Kind() == reflect.Interface {
-		slicev = slicev.Elem()
-	}
-	if slicev.Kind() != reflect.Slice {
-		panic("result argument must be a slice address")
-	}
-
-	slicev = slicev.Slice(0, slicev.Cap())
-	elemt := slicev.Type().Elem()
-	for cur.Next(todo) {
-		elemp := reflect.New(elemt)
-		if err = bson.Unmarshal(cur.Current, elemp.Interface()); err != nil {
-			continue
-		}
-		slicev = reflect.Append(slicev, elemp.Elem())
-		i++
-	}
-	resultv.Elem().Set(slicev.Slice(0, int(i)))
 	return
 }

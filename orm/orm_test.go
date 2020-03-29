@@ -111,9 +111,9 @@ func TestQsAll(t *testing.T) {
 	o.Using("default")
 	var ls []Logs
 	qs := o.QueryTable("log")
-	num, err := qs.Filter("username__regex", "linleizhou").OrderBy("-_id", "Ltype").Limit(2, 0).All(&ls)
+	err := qs.Filter("username__regex", "linleizhou").OrderBy("-_id", "Ltype").Limit(2, 0).All(&ls)
 	// num, err := qs.All(&ls)
-	beego.Info(num, err)
+	beego.Info(err)
 	beego.Info(ls)
 }
 

@@ -20,6 +20,8 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 )
 
 // 1 is attr
@@ -110,8 +112,14 @@ func getTableUnique(val reflect.Value) [][]string {
 // get snaked column name
 func getColumnName(ft int, addrField reflect.Value, sf reflect.StructField, col string) string {
 	column := col
+
+	tag, _ := bsoncodec.DefaultStructTagParser.ParseStructTags(sf)
 	if col == "" {
-		column = sf.Name
+		if tag.Name != "" {
+			column = tag.Name
+		} else {
+			column = sf.Name
+		}
 		// column = nameStrategyMap[nameStrategy](sf.Name)
 	}
 	switch ft {
@@ -120,7 +128,11 @@ func getColumnName(ft int, addrField reflect.Value, sf reflect.StructField, col 
 			column = column + "_id"
 		}
 	case RelManyToMany, RelReverseMany, RelReverseOne:
-		column = sf.Name
+		if tag.Name != "" {
+			column = tag.Name
+		} else {
+			column = sf.Name
+		}
 	}
 	return column
 }
@@ -227,5 +239,10 @@ func parseStructTag(data string) (attrs map[string]bool, tags map[string]string)
 			DebugLog.Println("unsupport orm tag", v)
 		}
 	}
+	return
+}
+
+func getStructBsonName(data string) (col string) {
+
 	return
 }

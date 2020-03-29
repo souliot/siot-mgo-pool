@@ -61,7 +61,7 @@ type QuerySeter interface {
 	Exist() bool
 	Update(OperatorUpdate, Params) (int64, error)
 	Delete() (int64, error)
-	All(interface{}, ...string) (int64, error)
+	All(interface{}, ...string) error
 	One(interface{}, ...string) error
 	Values(results *[]Params, exprs ...string) (int64, error)
 	ValuesList(results *[]ParamsList, exprs ...string) (int64, error)
@@ -96,7 +96,7 @@ type dbBaser interface {
 	DeleteOne(dbQuerier, *modelInfo, reflect.Value, interface{}, *time.Location, []string) (interface{}, error)
 
 	FindOne(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) error
-	Find(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) (int64, error)
+	Find(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) error
 	Count(*querySet, *modelInfo, *Condition, *time.Location) (int64, error)
 	UpdateMany(*querySet, *modelInfo, *Condition, OperatorUpdate, Params, *time.Location) (int64, error)
 	DeleteMany(*querySet, *modelInfo, *Condition, *time.Location) (int64, error)

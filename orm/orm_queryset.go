@@ -205,7 +205,7 @@ func (o *querySet) IndexView() (iv IndexViewer) {
 
 // query all data and map to containers.
 // cols means the columns when querying.
-func (o *querySet) All(container interface{}, cols ...string) (i int64, err error) {
+func (o *querySet) All(container interface{}, cols ...string) (err error) {
 	return o.orm.alias.DbBaser.Find(o, o.mi, o.cond, container, o.orm.alias.TZ, cols)
 }
 
