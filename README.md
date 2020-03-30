@@ -1,11 +1,122 @@
-# siot-mgo-pool
+# siot-mgo-pool 简介
 
-A mongodb pool by golang
+siot-mgo-pool 是一个参考 beego orm 开发的用于操作 mongodb 的库，使用法跟beego orm 基本相同。
+
+# orm使用方法
+
+> go get github.com/souliot/siot-mgo-pool
+
+user.go
+```golang
+package main
+
+import (
+  "github.com/souliot/siot-mgo-pool/orm"
+)
+
+type User struct {
+  Id         string   `bson:"_id"`
+  Name       string   `bson:"Name"`
+  Age        int      `bson:"Age"`
+}
+
+func init() {
+  orm.RegisterModel(new(User))
+}
+```
+
+main.go
+```golang
+package main
+
+import (
+  "fmt"
+  "github.com/souliot/siot-mgo-pool/orm"
+)
+
+func init() {
+  orm.RegisterDriver("mongo", orm.DRMongo)
+  orm.RegisterDataBase("default", "mongo", "mongodb://username:password@localhost:27017/test")
+  // 连接池参数 可以用下面 三个参数依次（初始大小，容量，空闲时间）默认为（5，20，30）
+  // orm.RegisterDataBase("default", "mongo", "mongodb://username:password@localhost:27017/test", 20, 30, 30)
+}
+
+var u = User{
+  Name: "Souliot",
+  Age: 28,
+}
+
+func main() {
+  o := orm.NewOrm()
+  o.Using("default") // 默认使用 default，你可以指定为其他数据库
+  
+  // 插入
+  id, err := o.Insert(&u)
+  fmt.Println(id, err)
+}
+```
 
 ## uri example
-
 mongodb://yapi:abcd1234@vm:27017/yapi
 mongodb://yapi:abcd1234@vm:27017,yapi:abcd1234@vm:27017,yapi:abcd1234@vm:27017/yapi
+
+# CRUD操作
+
+对 Object 的crud操作主要有（Read, ReadOrCreate, Insert, InsertMulti, Update, Delete）方法
+
+main.go
+```golang
+package main
+
+import (
+  "fmt"
+  "github.com/souliot/siot-mgo-pool/orm"
+)
+
+func main() {
+  o := orm.NewOrm()
+  o.Using("default") // 默认使用 default，你可以指定为其他数据库
+  
+  // Read
+  // Read 默认通过查询主键赋值，可以使用指定u的字段进行查询：
+  err := o.Read(&u, "Name")
+  fmt.Println(err, u)
+
+  // ReadOrCreate
+  // 三个返回参数依次为：是否新创建的，对象 Id 值，错误
+  created, id, err := o.ReadOrCreate(&u, "Name")
+  fmt.Println(created, id, err, u)
+
+  // 插入单个
+  id, err := o.Insert(&u)
+  fmt.Println(id, err)
+
+  // 插入多个
+  us := []User{}
+  us = append(us, u)
+  us = append(us, u)
+  ids,err := o.InsertMulti(us)
+  fmt.Println(ids, err)
+
+  // 更新
+  u.Id = "5e7431f78c1b4111312cce2d"
+  u.Name = "Siot"
+  u.Age = 26
+  id, err := o.Update(&u)
+  // 默认更新所有字段，可以更新指定的字段：
+  id, err := o.Update(&l, "Name")
+  fmt.Println(id, err, l)
+
+  // 删除
+  u.Id = "5e7431f78c1b4111312cce2d"
+  u.Name = "Siot"
+  cnt, err := o.Delete(&u)
+  // 默认根据主键删除，可以以指定字段为查询进行删除,但只会删除符合条件的第一条：
+  cnt, err := o.Delete(&u, "Name")
+  fmt.Println(cnt, err, u)
+}
+```
+
 
 ## index options 
 
