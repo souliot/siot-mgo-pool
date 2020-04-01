@@ -51,7 +51,6 @@ func newdbBaseMongo() dbBaser {
 func (d *dbBaseMongo) FindOne(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (err error) {
 	db := qs.orm.db.(*DB).MDB
 	col := db.Collection(mi.table)
-
 	opt := options.FindOne()
 	if len(cols) > 0 {
 		projection := bson.M{}
@@ -71,18 +70,11 @@ func (d *dbBaseMongo) FindOne(qs *querySet, mi *modelInfo, cond *Condition, cont
 
 	filter := convertCondition(cond)
 
-	var data []byte
 	if qs != nil && qs.forContext {
-		data, err = col.FindOne(qs.ctx, filter, opt).DecodeBytes()
+		err = col.FindOne(qs.ctx, filter, opt).Decode(container)
 	} else {
-		data, err = col.FindOne(todo, filter, opt).DecodeBytes()
+		err = col.FindOne(todo, filter, opt).Decode(container)
 	}
-
-	// Do something without content
-	if err != nil {
-		return
-	}
-	err = bson.Unmarshal(data, container)
 
 	return
 }
