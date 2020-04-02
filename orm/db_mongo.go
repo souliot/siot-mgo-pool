@@ -107,7 +107,6 @@ func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, contain
 
 	filter := convertCondition(cond)
 	cur := &mongo.Cursor{}
-
 	if qs != nil && qs.forContext {
 		// Do something with content
 		cur, err = col.Find(qs.ctx, filter, opt)
@@ -393,9 +392,23 @@ func convertCondition(cond *Condition) (filter bson.M) {
 		return
 	}
 	for i, p := range cond.params {
-
 		if p.isCond {
-			filter = convertCondition(p.cond)
+			f := convertCondition(p.cond)
+			if i > 0 {
+				if p.isOr {
+					filter = bson.M{
+						"$or": bson.A{filter, f},
+					}
+				} else {
+					// where += "AND "
+					filter = bson.M{
+						"$and": bson.A{filter, f},
+					}
+				}
+			} else {
+				filter = f
+			}
+
 		} else {
 			exprs := p.exprs
 
@@ -411,7 +424,6 @@ func convertCondition(cond *Condition) (filter bson.M) {
 			}
 
 			k, v := getCond(exprs, p.args, operator)
-			filter[k] = v
 
 			if i > 0 {
 				if p.isOr {
@@ -422,6 +434,8 @@ func convertCondition(cond *Condition) (filter bson.M) {
 					// where += "AND "
 					filter[k] = v
 				}
+			} else {
+				filter[k] = v
 			}
 
 		}
