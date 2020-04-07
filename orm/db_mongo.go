@@ -79,6 +79,21 @@ func (d *dbBaseMongo) FindOne(qs *querySet, mi *modelInfo, cond *Condition, cont
 	return
 }
 
+// read one record.
+func (d *dbBaseMongo) Distinct(qs *querySet, mi *modelInfo, cond *Condition, tz *time.Location, field string) (res []interface{}, err error) {
+	db := qs.orm.db.(*DB).MDB
+	col := db.Collection(mi.table)
+	opt := options.Distinct()
+
+	filter := convertCondition(cond)
+
+	if qs != nil && qs.forContext {
+		return col.Distinct(qs.ctx, field, filter, opt)
+	} else {
+		return col.Distinct(todo, field, filter, opt)
+	}
+}
+
 // read all records.
 func (d *dbBaseMongo) Find(qs *querySet, mi *modelInfo, cond *Condition, container interface{}, tz *time.Location, cols []string) (err error) {
 	db := qs.orm.db.(*DB).MDB

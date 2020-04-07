@@ -55,7 +55,6 @@ type QuerySeter interface {
 	GroupBy(exprs ...string) QuerySeter
 	OrderBy(exprs ...string) QuerySeter
 	RelatedSel(params ...interface{}) QuerySeter
-	Distinct() QuerySeter
 	ForUpdate() QuerySeter
 	Count() (int64, error)
 	Exist() bool
@@ -63,6 +62,7 @@ type QuerySeter interface {
 	Delete() (int64, error)
 	All(interface{}, ...string) error
 	One(interface{}, ...string) error
+	Distinct(string) ([]interface{}, error)
 	Values(results *[]Params, exprs ...string) (int64, error)
 	ValuesList(results *[]ParamsList, exprs ...string) (int64, error)
 	ValuesFlat(result *ParamsList, expr string) (int64, error)
@@ -96,6 +96,7 @@ type dbBaser interface {
 	DeleteOne(dbQuerier, *modelInfo, reflect.Value, interface{}, *time.Location, []string) (interface{}, error)
 
 	FindOne(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) error
+	Distinct(*querySet, *modelInfo, *Condition, *time.Location, string) ([]interface{}, error)
 	Find(*querySet, *modelInfo, *Condition, interface{}, *time.Location, []string) error
 	Count(*querySet, *modelInfo, *Condition, *time.Location) (int64, error)
 	UpdateMany(*querySet, *modelInfo, *Condition, OperatorUpdate, Params, *time.Location) (int64, error)

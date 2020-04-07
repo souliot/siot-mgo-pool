@@ -135,10 +135,10 @@ func (o querySet) OrderBy(exprs ...string) QuerySeter {
 }
 
 // add DISTINCT to SELECT
-func (o querySet) Distinct() QuerySeter {
-	o.distinct = true
-	return &o
-}
+// func (o querySet) Distinct() QuerySeter {
+// 	o.distinct = true
+// 	return &o
+// }
 
 // add FOR UPDATE to SELECT
 func (o querySet) ForUpdate() QuerySeter {
@@ -219,6 +219,11 @@ func (o *querySet) One(container interface{}, cols ...string) (err error) {
 	}
 	return
 
+}
+
+func (o *querySet) Distinct(field string) (res []interface{}, err error) {
+
+	return o.orm.alias.DbBaser.Distinct(o, o.mi, o.cond, o.orm.alias.TZ, field)
 }
 
 // query all data and map to []map[string]interface.
