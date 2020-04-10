@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
 )
 
 type Logs struct {
@@ -25,7 +25,7 @@ func (m *Logs) TableName() string {
 }
 
 func init() {
-	beego.SetLogFuncCall(true)
+	logs.SetLogFuncCall(true)
 
 	RegisterModel(new(Logs))
 	RegisterModel(new(Logs2))
@@ -48,14 +48,14 @@ func TestRead(t *testing.T) {
 	o.Using("default")
 
 	err := o.Read(&l, "UserName")
-	beego.Info(err, l)
+	logs.Info(err, l)
 }
 func TestReadOrCreate(t *testing.T) {
 	o := NewOrm()
 	o.Using("default")
 
 	c, id, err := o.ReadOrCreate(&l, "UserName")
-	beego.Info(c, id, err, l)
+	logs.Info(c, id, err, l)
 }
 
 func TestInsert(t *testing.T) {
@@ -63,7 +63,7 @@ func TestInsert(t *testing.T) {
 	o.Using("default")
 
 	id, err := o.Insert(&l)
-	beego.Info(id, err)
+	logs.Info(id, err)
 }
 
 func TestInsertMulti(t *testing.T) {
@@ -74,7 +74,7 @@ func TestInsertMulti(t *testing.T) {
 	ls = append(ls, l)
 	ls = append(ls, l)
 	id, err := o.InsertMulti(ls)
-	beego.Info(id, err)
+	logs.Info(id, err)
 }
 
 func TestUpdate(t *testing.T) {
@@ -84,7 +84,7 @@ func TestUpdate(t *testing.T) {
 	l.Ids = "5e7431f78c1b4111312cce2d"
 	l.Ltype = "group3"
 	id, err := o.Update(&l, "Ltype")
-	beego.Info(id, err, l)
+	logs.Info(id, err, l)
 }
 
 func TestDelete(t *testing.T) {
@@ -94,7 +94,7 @@ func TestDelete(t *testing.T) {
 	l.Ids = "5e71816fee8b0d2ba0d24939"
 	l.Ltype = "group3"
 	cnt, err := o.Delete(&l, "Ltype")
-	beego.Info(cnt, err)
+	logs.Info(cnt, err)
 }
 
 func TestQsOne(t *testing.T) {
@@ -103,7 +103,7 @@ func TestQsOne(t *testing.T) {
 
 	qs := o.QueryTable("log")
 	err := qs.Filter("username", "linleizhou1234").One(&l, "username", "type")
-	beego.Info(err, l)
+	logs.Info(err, l)
 }
 
 func TestQsAll(t *testing.T) {
@@ -113,8 +113,8 @@ func TestQsAll(t *testing.T) {
 	qs := o.QueryTable("log")
 	err := qs.Filter("username__regex", "linleizhou").OrderBy("-_id", "Ltype").Limit(2, 0).All(&ls)
 	// num, err := qs.All(&ls)
-	beego.Info(err)
-	beego.Info(ls)
+	logs.Info(err)
+	logs.Info(ls)
 }
 
 func TestQsCount(t *testing.T) {
@@ -124,7 +124,7 @@ func TestQsCount(t *testing.T) {
 	qs := o.QueryTable("log")
 	num, err := qs.Filter("username", "linleizhou1234").Count()
 	// num, err := qs.Count()
-	beego.Info(num, err)
+	logs.Info(num, err)
 }
 func TestQsUpdate(t *testing.T) {
 	o := NewOrm()
@@ -134,7 +134,7 @@ func TestQsUpdate(t *testing.T) {
 	num, err := qs.Filter("_id", "5e7431f78c1b4111312cce2d").Update(MgoSet, Params{
 		"type": "group",
 	})
-	beego.Info(num, err)
+	logs.Info(num, err)
 }
 func TestQsDelete(t *testing.T) {
 	o := NewOrm()
@@ -142,7 +142,7 @@ func TestQsDelete(t *testing.T) {
 
 	qs := o.QueryTable("log")
 	num, err := qs.Filter("type", "group3").Delete()
-	beego.Info(num, err)
+	logs.Info(num, err)
 }
 func TestQsIndexList(t *testing.T) {
 	o := NewOrm()
@@ -150,7 +150,7 @@ func TestQsIndexList(t *testing.T) {
 
 	qs := o.QueryTable("log")
 	indexes, err := qs.IndexView().List()
-	beego.Info(indexes, err)
+	logs.Info(indexes, err)
 }
 func TestQsIndexCreateOne(t *testing.T) {
 	o := NewOrm()
@@ -162,7 +162,7 @@ func TestQsIndexCreateOne(t *testing.T) {
 	index.SetName("username").SetUnique(true)
 
 	indexes, err := qs.IndexView().CreateOne(index)
-	beego.Info(indexes, err)
+	logs.Info(indexes, err)
 
 }
 func TestQsIndexDropOne(t *testing.T) {
@@ -171,13 +171,13 @@ func TestQsIndexDropOne(t *testing.T) {
 
 	qs := o.QueryTable("log")
 	err := qs.IndexView().DropOne("username")
-	beego.Info(err)
+	logs.Info(err)
 }
 func TestOther(t *testing.T) {
 	// uri := "mongodb://@192.168.0.4:27017/Darwin-XYY"
 	// cs, err := connstring.Parse(uri)
-	// beego.Info(err)
-	// beego.Info(cs.Database)
-	beego.Info(time.Now().Unix())
-	beego.Info(time.Now().UTC().Unix())
+	// logs.Info(err)
+	// logs.Info(cs.Database)
+	logs.Info(time.Now().Unix())
+	logs.Info(time.Now().UTC().Unix())
 }
