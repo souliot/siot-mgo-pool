@@ -33,9 +33,17 @@ type _pools struct {
 }
 
 // add pool with pool name.
-func (m *_pools) add(name string, p Pool) (added bool) {
+func (m *_pools) add(name string, p Pool, force bool) (added bool) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
+	if force {
+		if _, ok := m.cache[name]; ok {
+			m.cache[name].Release()
+		}
+		m.cache[name] = p
+		added = true
+		return
+	}
 	if _, ok := m.cache[name]; !ok {
 		m.cache[name] = p
 		added = true

@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-func RegisterMgoPool(poolName string, url string, params ...int) (err error) {
+func RegisterMgoPool(poolName string, url string, force bool, params ...int) (err error) {
 	//factory 创建连接的方法
 	factory := func() (interface{}, error) {
 		return mongo.Connect(context.Background(), options.Client().ApplyURI(url))
@@ -54,7 +54,7 @@ func RegisterMgoPool(poolName string, url string, params ...int) (err error) {
 	}
 	mgoPool, err := NewChannelPool(poolConfig)
 
-	if !pools.add(poolName, mgoPool) {
+	if !pools.add(poolName, mgoPool, force) {
 		return ErrRegisterPool
 	}
 	return

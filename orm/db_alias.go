@@ -50,9 +50,16 @@ type _dbCache struct {
 }
 
 // add database alias with original name.
-func (ac *_dbCache) add(name string, al *alias) (added bool) {
+func (ac *_dbCache) add(name string, al *alias, force bool) (added bool) {
 	ac.mux.Lock()
 	defer ac.mux.Unlock()
+
+	if force {
+		ac.cache[name] = al
+		added = true
+		return
+	}
+
 	if _, ok := ac.cache[name]; !ok {
 		ac.cache[name] = al
 		added = true
@@ -134,7 +141,7 @@ func detectTZ(al *alias) {
 	al.TZ = DefaultTimeLoc
 }
 
-func addAlias(aliasName, driverName string) (*alias, error) {
+func addAlias(aliasName, driverName string, force bool) (*alias, error) {
 	al := new(alias)
 	al.Name = aliasName
 	al.DriverName = driverName
@@ -146,7 +153,7 @@ func addAlias(aliasName, driverName string) (*alias, error) {
 		return nil, fmt.Errorf("driver name `%s` have not registered", driverName)
 	}
 
-	if !dataBaseCache.add(aliasName, al) {
+	if !dataBaseCache.add(aliasName, al, force) {
 		return nil, fmt.Errorf("DataBase alias name `%s` already registered, cannot reuse", aliasName)
 	}
 
@@ -155,22 +162,22 @@ func addAlias(aliasName, driverName string) (*alias, error) {
 
 // AddAliasWthDB add a aliasName for the drivename
 func AddAlias(aliasName, driverName string) error {
-	_, err := addAlias(aliasName, driverName)
+	_, err := addAlias(aliasName, driverName, false)
 	return err
 }
 
 // RegisterDataBase Setting the database connect params. Use the database driver self dataSource args.
-func RegisterDataBase(aliasName, driverName, dataSource string, params ...int) (err error) {
+func RegisterDataBase(aliasName, driverName, dataSource string, force bool, params ...int) (err error) {
 	var (
 		al *alias
 	)
-	err = pool.RegisterMgoPool(aliasName, dataSource, params...)
+	err = pool.RegisterMgoPool(aliasName, dataSource, force, params...)
 	if err != nil {
 		DebugLog.Println(err.Error())
 		return
 	}
 
-	al, err = addAlias(aliasName, driverName)
+	al, err = addAlias(aliasName, driverName, force)
 	if err != nil {
 		DebugLog.Println(err.Error())
 		return
@@ -185,7 +192,12 @@ func RegisterDataBase(aliasName, driverName, dataSource string, params ...int) (
 }
 
 // RegisterDriver Register a database driver use specify driver name, this can be definition the driver is which database type.
-func RegisterDriver(driverName string, typ DriverType) error {
+func RegisterDriver(driverName string, typ DriverType, force bool) error {
+	if force {
+		drivers[driverName] = typ
+		return nil
+	}
+
 	if t, ok := drivers[driverName]; !ok {
 		drivers[driverName] = typ
 	} else {
