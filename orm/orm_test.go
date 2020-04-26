@@ -30,8 +30,8 @@ func init() {
 	RegisterModel(new(Logs))
 	RegisterModel(new(Logs2))
 
-	RegisterDriver("mongo", DRMongo)
-	RegisterDataBase("default", "mongo", "mongodb://yapi:abcd1234@192.168.50.200:27017/yapi")
+	RegisterDriver("mongo", DRMongo, true)
+	RegisterDataBase("default", "mongo", "mongodb://yapi:abcd1234@192.168.50.200:27017/yapi", true)
 	// RegisterDataBase("default", "mongo", "mongodb://yapi:abcd1234@vm:27017/yapi")
 
 }

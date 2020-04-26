@@ -35,8 +35,10 @@ import (
 )
 
 func init() {
-  orm.RegisterDriver("mongo", orm.DRMongo)
-  orm.RegisterDataBase("default", "mongo", "mongodb://username:password@localhost:27017/test")
+  // force 表示是否强制替换已经存在的，force为false时，如果已存在，将会导致Register错误
+  force := true
+  orm.RegisterDriver("mongo", orm.DRMongo, force)
+  orm.RegisterDataBase("default", "mongo", "mongodb://username:password@localhost:27017/test", force)
   // 连接池参数 可以用下面 三个参数依次（初始大小，容量，空闲时间）默认为（5，20，30）
   // orm.RegisterDataBase("default", "mongo", "mongodb://username:password@localhost:27017/test", 20, 30, 30)
 }
